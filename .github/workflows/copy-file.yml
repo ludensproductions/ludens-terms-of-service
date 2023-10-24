@@ -1,0 +1,48 @@
+name: Copy Files to another repo Workflow
+
+on:
+  push:
+    branches:
+      - main
+    
+jobs:
+  copy-files:
+    runs-on: ubuntu-latest
+    env:
+      API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+      SOURCE_REPO: ludensproductions/ludens-terms-of-service
+      SOURCE_BRANCH: main
+      DEST_REPO: ludensproductions/ludensproductions.github.io
+      DEST_BRANCH: main
+      GIT_USERNAME: MariaBarraza
+      GIT_EMAIL: reikafer@gmail.com
+      COPY_FILE: policies.html
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+   
+    - name: global user config
+      run: |
+        git config --global user.name "${{ env.GIT_USERNAME }}"
+        git config --global user.email "${{ env.GIT_EMAIL }}"
+    
+    - name: Clone Repository
+      run: |
+        git clone https://${{ secrets.API_TOKEN_GITHUB }}@github.com/${{ env.SOURCE_REPO }}
+        git clone https://${{ secrets.API_TOKEN_GITHUB }}@github.com/${{ env.DEST_REPO }}
+       
+    - name: Check if a file has changed and push to destination repo
+      run: |
+        IFS="/" read -ra DEST_REPO_NAME <<< ${{ env.DEST_REPO }}
+        IFS="/" read -ra SOURCE_REPO_NAME <<< ${{ env.SOURCE_REPO }}
+        cp "${SOURCE_REPO_NAME[1]}/${{ env.COPY_FILE }}" "${DEST_REPO_NAME[1]}/${{ env.COPY_FILE }}"
+        cd "${DEST_REPO_NAME[1]}"
+        if [[ $(git diff ${{ env.COPY_FILE }}) ]]; then
+          git pull
+          git add ${{ env.COPY_FILE }}
+          git commit -m "Policies updated"
+          git push https://${{ secrets.API_TOKEN_GITHUB }}@github.com/${{ env.DEST_REPO }} HEAD:${{ env.DEST_BRANCH }}
+        else
+          echo "No changes to ${{ env.COPY_FILE }}"
+        fi
